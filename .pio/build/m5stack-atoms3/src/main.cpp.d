@@ -179,10 +179,76 @@
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_hw_support/include/soc/esp32/spiram.h \
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/cores/esp32/io_pin_remap.h \
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/cores/esp32/Arduino.h \
- .pio/libdeps/m5stack-atoms3/M5Unit-ENV/src/M5UnitENV.h \
- .pio/libdeps/m5stack-atoms3/M5Unit-ENV/src/DHT12.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/M5GFX.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/gitTagVersion.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/device.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/Light_PWM.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/../../Light.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/Bus_SPI.hpp \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_rom/include/esp32s3/rom/lldesc.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/driver/include/driver/spi_common_internal.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/driver/include/driver/spi_common.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/include/soc/lldesc.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/include/soc/spi_periph.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/periph_defs.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/soc_pins.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/usb_pins.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/gpio_pins.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/spi_pins.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/sdio_slave_pins.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/sdmmc_pins.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/touch_sensor_pins.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/spi_reg.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/spi_struct.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/spi_mem_struct.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/spi_mem_reg.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/hal/include/hal/spi_types.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_pm/include/esp_pm.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_pm/include/esp32s3/pm.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/rtc.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/../../Bus.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/../../misc/enum.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/../common.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/../esp32/common.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/../esp32/../../misc/DataWrapper.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/../esp32/../../misc/../../utility/pgmspace.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/../esp32/../../../utility/result.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/../esp32/../../../utility/../internal/memory.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/i2s_reg.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-spi.h \
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/libraries/Wire/src/Wire.h \
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/../../../utility/result.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32/Bus_I2C.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32s3/Bus_Parallel8.hpp \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_lcd/include/esp_lcd_panel_io.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_lcd/include/esp_lcd_types.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/hal/include/hal/lcd_types.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/driver/include/esp_private/gdma.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/soc/esp32s3/include/soc/gdma_channel.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/hal/include/hal/gdma_types.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/hal/include/hal/dma_types.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/platforms/esp32s3/Bus_Parallel16.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/lgfx_filesystem_support.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/../internal/alloca.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/LGFXBase.hpp \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/cores/esp32/Print.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/misc/colortype.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/misc/../../utility/pgmspace.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/misc/pixelcopy.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/lgfx_fonts.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/../utility/pgmspace.h \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/Touch.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/panel/Panel_Device.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/panel/../Panel.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/../boards.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/LGFX_Sprite.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/misc/SpriteBuffer.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/misc/bitmap.hpp \
+ .pio/libdeps/m5stack-atoms3/M5GFX/src/lgfx/v1/LGFX_Button.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Unit-ENV/src/M5UnitENV.h \
+ .pio/libdeps/m5stack-atoms3/M5Unit-ENV/src/DHT12.h \
  .pio/libdeps/m5stack-atoms3/M5Unit-ENV/src/I2C_Class.h \
  .pio/libdeps/m5stack-atoms3/M5Unit-ENV/src/QMP6988.h \
  .pio/libdeps/m5stack-atoms3/M5Unit-ENV/src/SHT3X.h \
