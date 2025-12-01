@@ -85,19 +85,36 @@ void loop() {
     
     // Display all data on screen using canvas
     canvas.fillScreen(BLACK);
-    canvas.setTextSize(2);
     
-    canvas.setCursor(5, 5);
-    canvas.printf("T : %.1fC", sht3x.cTemp);
+    // Display only humidity - large centered number with smooth font
+    int humidity = (int)sht3x.humidity;
+    char humidityStr[4];
+    sprintf(humidityStr, "%d", humidity);
     
-    canvas.setCursor(5, 35);
-    canvas.printf("RH: %.1f%%", sht3x.humidity);
+    // Use built-in smooth font
+    canvas.setFont(&fonts::Font7);
+    canvas.setTextDatum(middle_center);
     
-    canvas.setCursor(5, 65);
-    canvas.printf("T : %.1fC", qmp.cTemp);
+    // Change color based on humidity value
+    if (humidity >= 50) {
+        canvas.setTextColor(RED);
+    } else {
+        canvas.setTextColor(WHITE);
+    }
     
-    canvas.setCursor(5, 95);
-    canvas.printf("P : %.0fPa", qmp.pressure / 100);
+    // Center the text
+    canvas.drawString(humidityStr, display.width() / 2, display.height() / 2);
+    
+    // // Previous display code - all sensor data
+    // canvas.setTextSize(2);
+    // canvas.setCursor(5, 5);
+    // canvas.printf("T : %.1fC", sht3x.cTemp);
+    // canvas.setCursor(5, 35);
+    // canvas.printf("RH: %.1f%%", sht3x.humidity);
+    // canvas.setCursor(5, 65);
+    // canvas.printf("T : %.1fC", qmp.cTemp);
+    // canvas.setCursor(5, 95);
+    // canvas.printf("P : %.0fPa", qmp.pressure / 100);
     
     canvas.pushSprite(0, 0);
     
