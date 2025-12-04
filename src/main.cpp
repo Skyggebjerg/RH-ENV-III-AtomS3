@@ -2,14 +2,10 @@
 
 /**
  * @file ENV_III.ino
- * @author SeanKwok (shaoxiang@m5stack.com)
- * @brief
- * @version 0.2
- * @date 2024-07-18
+ * @date 2025-12-04
  *
  *
  * @Hardwares: M5AtomS3 + Unit ENV_III
- * @Platform Version: Arduino M5Stack Board Manager v2.1.0
  * @Dependent Library:
  * M5UnitENV: https://github.com/m5stack/M5Unit-ENV
  */
@@ -30,27 +26,39 @@ M5Canvas canvas(&display);
 const char* ssid = "AtomS3-RH-Sensor";
 const char* password = "12345678";
 
+// RH threshold for alert (change this value to adjust threshold)
+const int RH_THRESHOLD = 50;
+
 // Web server on port 80
 WebServer server(80);
 
 // HTML page with auto-refresh
 void handleRoot() {
+    int humidity = (int)sht3x.humidity;
+    float temperature = sht3x.cTemp;
+    float pressure = qmp.pressure / 100.0; // Convert Pa to mbar
+    bool isAlert = (humidity >= RH_THRESHOLD);
+    String bgColor = isAlert ? "#cc0000" : "#1a1a1a";
+    
     String html = "<!DOCTYPE html><html><head>";
     html += "<meta charset='UTF-8'>";
     html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
     html += "<meta http-equiv='refresh' content='1'>";
     html += "<title>RH Sensor</title>";
     html += "<style>";
-    html += "body { font-family: Arial, sans-serif; text-align: center; background-color: #1a1a1a; color: white; margin: 0; padding: 0; }";
+    html += "body { font-family: Arial, sans-serif; text-align: center; background-color: " + bgColor + "; color: white; margin: 0; padding: 0; }";
     html += ".container { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; }";
     html += ".rh-value { font-size: 150px; font-weight: bold; margin: 20px; }";
     html += ".label { font-size: 40px; color: #888; }";
+    html += ".other-values { font-size: 30px; color: #ccc; margin: 10px; }";
     html += ".timestamp { font-size: 20px; color: #666; margin-top: 30px; }";
     html += "</style>";
     html += "</head><body>";
     html += "<div class='container'>";
     html += "<div class='label'>Relative Humidity</div>";
-    html += "<div class='rh-value'>" + String((int)sht3x.humidity) + "%</div>";
+    html += "<div class='rh-value'>" + String(humidity) + "%</div>";
+    html += "<div class='other-values'>Temperature: " + String(temperature, 1) + " °C</div>";
+    html += "<div class='other-values'>Pressure: " + String(pressure, 1) + " mbar</div>";
     html += "<div class='timestamp'>Updates every second</div>";
     html += "</div>";
     html += "</body></html>";
@@ -169,8 +177,8 @@ void loop() {
     canvas.setFont(&fonts::Font7);
     canvas.setTextDatum(middle_center);
     
-    // Change color based on humidity value
-    if (humidity >= 50) {
+    // Change color based on humidity value using global threshold
+    if (humidity >= RH_THRESHOLD) {
         canvas.setTextColor(RED);
     } else {
         canvas.setTextColor(WHITE);
