@@ -17,12 +17,46 @@
 //#include "M5AtomS3.h"
 #include <M5GFX.h>
 #include "M5UnitENV.h"
+#include <WiFi.h>
+#include <WebServer.h>
 
 SHT3X sht3x;
 QMP6988 qmp;
 
 M5GFX display;
 M5Canvas canvas(&display);
+
+// WiFi AP credentials
+const char* ssid = "AtomS3-RH-Sensor";
+const char* password = "12345678";
+
+// Web server on port 80
+WebServer server(80);
+
+// HTML page with auto-refresh
+void handleRoot() {
+    String html = "<!DOCTYPE html><html><head>";
+    html += "<meta charset='UTF-8'>";
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+    html += "<meta http-equiv='refresh' content='1'>";
+    html += "<title>RH Sensor</title>";
+    html += "<style>";
+    html += "body { font-family: Arial, sans-serif; text-align: center; background-color: #1a1a1a; color: white; margin: 0; padding: 0; }";
+    html += ".container { display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; }";
+    html += ".rh-value { font-size: 150px; font-weight: bold; margin: 20px; }";
+    html += ".label { font-size: 40px; color: #888; }";
+    html += ".timestamp { font-size: 20px; color: #666; margin-top: 30px; }";
+    html += "</style>";
+    html += "</head><body>";
+    html += "<div class='container'>";
+    html += "<div class='label'>Relative Humidity</div>";
+    html += "<div class='rh-value'>" + String((int)sht3x.humidity) + "%</div>";
+    html += "<div class='timestamp'>Updates every second</div>";
+    html += "</div>";
+    html += "</body></html>";
+    
+    server.send(200, "text/html", html);
+}
 
 void setup() {
     Serial.begin(115200);
@@ -55,9 +89,48 @@ void setup() {
         }
     }
 
+    // Configure WiFi Access Point
+    Serial.println("Setting up WiFi Access Point...");
+    canvas.fillScreen(BLACK);
+    canvas.setTextSize(1);
+    canvas.setCursor(5, 5);
+    canvas.println("WiFi AP Mode");
+    canvas.pushSprite(0, 0);
+    
+    WiFi.mode(WIFI_AP);
+    WiFi.softAP(ssid, password);
+    
+    IPAddress IP = WiFi.softAPIP();
+    Serial.print("AP IP address: ");
+    Serial.println(IP);
+    
+    // Display WiFi info on screen
+    canvas.fillScreen(BLACK);
+    canvas.setTextSize(1);
+    canvas.setCursor(5, 5);
+    canvas.println("WiFi AP Ready");
+    canvas.setCursor(5, 20);
+    canvas.print("SSID: ");
+    canvas.println(ssid);
+    canvas.setCursor(5, 35);
+    canvas.print("IP: ");
+    canvas.println(IP);
+    canvas.setCursor(5, 50);
+    canvas.println("Connect & browse");
+    canvas.pushSprite(0, 0);
+    
+    // Setup web server
+    server.on("/", handleRoot);
+    server.begin();
+    Serial.println("HTTP server started");
+    
+    delay(3000); // Show WiFi info for 3 seconds
 }
 
 void loop() {
+    // Handle web server clients
+    server.handleClient();
+    
     if (sht3x.update()) {
         Serial.println("-----SHT3X-----");
         // Serial.print("Temperature: ");
@@ -92,6 +165,7 @@ void loop() {
     sprintf(humidityStr, "%d", humidity);
     
     // Use built-in smooth font
+    canvas.setTextSize(2);
     canvas.setFont(&fonts::Font7);
     canvas.setTextDatum(middle_center);
     
