@@ -1,0 +1,31 @@
+.pio/build/m5stack-atoms3/lib760/M5Utility/m5_utility/base64.cpp.o: \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/base64.cpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/base64.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/M5Utility.h \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/M5Utility.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/stl/expected.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/stl/extension.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/stl/optional.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/stl/endianness.hpp \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/newlib/platform_include/endian.h \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/stl/byteswap.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/log/library_log.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/container/circular_buffer.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/container/../stl/optional.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/crypto/des.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/crypto/sha1.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/bit_segment.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/compatibility_feature.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/murmurhash3.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/./stl/endianness.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/types.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/stl/endianness.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/crc.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/misc.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/string.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/conversion.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/math.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/button_status.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/misc.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/lfsr.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/base64.hpp

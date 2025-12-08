@@ -44,6 +44,8 @@
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/log/library_log.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/container/circular_buffer.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/container/../stl/optional.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/crypto/des.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/crypto/sha1.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/bit_segment.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/compatibility_feature.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/murmurhash3.hpp \
@@ -58,6 +60,7 @@
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/button_status.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/misc.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/lfsr.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/base64.hpp \
  .pio/libdeps/m5stack-atoms3/M5HAL/src/./m5_hal/platform_checker.hpp \
  .pio/libdeps/m5stack-atoms3/M5HAL/src/./m5_hal/framework_checker.hpp \
  .pio/libdeps/m5stack-atoms3/M5HAL/src/./m5_hal/bus/i2c.hpp \
@@ -240,4 +243,7 @@
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_ringbuf/include/freertos/ringbuf.h \
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/hal/include/hal/rmt_types.h \
  .pio/libdeps/m5stack-atoms3/M5UnitUnified/src/m5_unit_component/adapter_uart.hpp \
+ .pio/libdeps/m5stack-atoms3/M5UnitUnified/src/m5_unit_component/adapter_spi.hpp \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src/SPI.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/cores/esp32/esp32-hal-spi.h \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/container/circular_buffer.hpp

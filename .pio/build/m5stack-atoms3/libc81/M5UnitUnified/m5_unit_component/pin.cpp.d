@@ -11,6 +11,8 @@
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/log/library_log.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/container/circular_buffer.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/container/../stl/optional.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/crypto/des.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/crypto/sha1.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/bit_segment.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/compatibility_feature.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/murmurhash3.hpp \
@@ -25,6 +27,7 @@
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/button_status.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/misc.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/lfsr.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/base64.hpp \
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/driver/include/driver/i2c.h \
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_common/include/esp_types.h \
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/esp_common/include/esp_err.h \

@@ -11,6 +11,8 @@
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/log/library_log.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/container/circular_buffer.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/container/../stl/optional.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/crypto/des.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/crypto/sha1.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/bit_segment.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/compatibility_feature.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/murmurhash3.hpp \
@@ -25,6 +27,7 @@
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/button_status.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/misc.hpp \
  .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/lfsr.hpp \
+ .pio/libdeps/m5stack-atoms3/M5Utility/src/m5_utility/base64.hpp \
  .pio/libdeps/m5stack-atoms3/M5HAL/src/./m5_hal/platform_checker.hpp \
  .pio/libdeps/m5stack-atoms3/M5HAL/src/./m5_hal/framework_checker.hpp \
  .pio/libdeps/m5stack-atoms3/M5HAL/src/./m5_hal/bus/i2c.hpp \

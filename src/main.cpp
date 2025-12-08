@@ -15,7 +15,8 @@
 #include "M5UnitENV.h"
 #include <WiFi.h>
 #include <WebServer.h>
-#include <Preferences.h>
+#include <SPIFFS.h>
+#include <FS.h>
 
 SHT3X sht3x;
 QMP6988 qmp;
@@ -23,7 +24,7 @@ QMP6988 qmp;
 M5GFX display;
 M5Canvas canvas(&display);
 
-Preferences preferences;
+const char* DATA_FILE = "/sensor_data.bin";
 
 // WiFi AP credentials
 const char* ssid = "AtomS3-RH-Sensor";
@@ -45,6 +46,19 @@ struct DataPoint {
     float pressure;
     unsigned long timestamp; // Minutes since boot
 };
+
+// Min/Max tracking
+struct MinMax {
+    float minHumidity = 999.0;
+    float maxHumidity = -999.0;
+    float minTemperature = 999.0;
+    float maxTemperature = -999.0;
+    float minPressure = 9999.0;
+    float maxPressure = 0.0;
+};
+
+MinMax minMaxValues;
+const char* MINMAX_FILE = "/minmax.bin";
 
 // Web server on port 80
 WebServer server(80);
@@ -77,6 +91,10 @@ void handleRoot() {
     html += "<div class='rh-value'>" + String(humidity) + "%</div>";
     html += "<div class='other-values'>Temperature: " + String(temperature, 1) + " °C</div>";
     html += "<div class='other-values'>Pressure: " + String(pressure, 1) + " mbar</div>";
+    html += "<div style='margin-top: 30px; font-size: 20px; color: #888;'>Recorded Min/Max</div>";
+    html += "<div class='other-values' style='font-size: 18px;'>RH: " + String(minMaxValues.minHumidity, 1) + "% - " + String(minMaxValues.maxHumidity, 1) + "%</div>";
+    html += "<div class='other-values' style='font-size: 18px;'>Temp: " + String(minMaxValues.minTemperature, 1) + "°C - " + String(minMaxValues.maxTemperature, 1) + "°C</div>";
+    html += "<div class='other-values' style='font-size: 18px;'>Press: " + String(minMaxValues.minPressure, 1) + " - " + String(minMaxValues.maxPressure, 1) + " mbar</div>";
     html += "<div class='timestamp'>Updates every 10 seconds</div>";
     html += "<a href='/history' class='button'>View History</a>";
     html += "</div>";
@@ -103,6 +121,7 @@ void handleHistory() {
     html += "<h1>Sensor History</h1>";
     html += "<a href='/' class='button'>Back to Current</a>";
     html += "<a href='/csv' class='button'>Download CSV</a>";
+    html += "<button onclick='clearData()' class='button' style='background-color:#f44336;'>Clear All Data</button>";
     html += "<div id='loading'>Loading data...</div>";
     html += "<div class='chart-container'><h2>Humidity (%)</h2><canvas id='chart1'></canvas></div>";
     html += "<div class='chart-container'><h2>Temperature (°C)</h2><canvas id='chart2'></canvas></div>";
@@ -139,6 +158,11 @@ void handleHistory() {
     html += "drawChart('chart2',data.map(d=>d.temperature),'rgb(255,99,132)','Temperature');";
     html += "drawChart('chart3',data.map(d=>d.pressure),'rgb(255,205,86)','Pressure');";
     html += "});";
+    html += "function clearData(){";
+    html += "if(confirm('Are you sure you want to delete all logged data?')){";
+    html += "fetch('/clear',{method:'POST'}).then(()=>location.reload());";
+    html += "}";
+    html += "}";
     html += "</script>";
     html += "</body></html>";
     
@@ -147,107 +171,213 @@ void handleHistory() {
 
 // Handle CSV download - returns raw CSV data
 void handleCSV() {
-    String csv = "Minutes Ago,Humidity (%),Temperature (°C),Pressure (mbar)\n";
+    server.sendHeader("Content-Disposition", "attachment; filename=sensor_data.csv");
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "text/csv", "");
     
-    // Read data from NVS
-    preferences.begin("sensor_log", true);
-    int count = preferences.getInt("count", 0);
-    int startIdx = preferences.getInt("startIdx", 0);
+    server.sendContent("Minutes Ago,Humidity (%),Temperature (°C),Pressure (mbar)\n");
     
-    if (count > 0) {
-        for (int i = 0; i < count; i++) {
-            int idx = (startIdx + i) % MAX_DATA_POINTS;
-            String key = "d" + String(idx);
-            
-            size_t len = preferences.getBytesLength(key.c_str());
-            if (len == sizeof(DataPoint)) {
-                DataPoint dp;
-                preferences.getBytes(key.c_str(), &dp, sizeof(DataPoint));
-                
-                unsigned long minutesAgo = (count - 1 - i);
-                
-                csv += String(minutesAgo) + ",";
-                csv += String(dp.humidity, 1) + ",";
-                csv += String(dp.temperature, 1) + ",";
-                csv += String(dp.pressure, 1) + "\n";
-            }
+    File file = SPIFFS.open(DATA_FILE, "r");
+    if (file) {
+        int count = 0;
+        while (file.available() >= sizeof(DataPoint)) {
+            DataPoint dp;
+            file.read((uint8_t*)&dp, sizeof(DataPoint));
+            count++;
         }
+        
+        file.seek(0);
+        int index = 0;
+        while (file.available() >= sizeof(DataPoint)) {
+            DataPoint dp;
+            file.read((uint8_t*)&dp, sizeof(DataPoint));
+            
+            unsigned long minutesAgo = (count - 1 - index);
+            
+            String line = String(minutesAgo) + ",";
+            line += String(dp.humidity, 1) + ",";
+            line += String(dp.temperature, 1) + ",";
+            line += String(dp.pressure, 1) + "\n";
+            server.sendContent(line);
+            index++;
+        }
+        file.close();
     }
     
-    preferences.end();
-    
-    server.sendHeader("Content-Disposition", "attachment; filename=sensor_data.csv");
-    server.send(200, "text/csv", csv);
+    server.sendContent("");
 }
 
 // Handle JSON data for dynamic loading
 void handleData() {
-    String json = "[";
+    server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+    server.send(200, "application/json", "");
     
-    preferences.begin("sensor_log", true);
-    int count = preferences.getInt("count", 0);
-    int startIdx = preferences.getInt("startIdx", 0);
+    server.sendContent("[");
     
-    if (count > 0) {
-        for (int i = 0; i < count; i++) {
-            int idx = (startIdx + i) % MAX_DATA_POINTS;
-            String key = "d" + String(idx);
-            
-            size_t len = preferences.getBytesLength(key.c_str());
-            if (len == sizeof(DataPoint)) {
-                DataPoint dp;
-                preferences.getBytes(key.c_str(), &dp, sizeof(DataPoint));
-                
-                unsigned long minutesAgo = (count - 1 - i);
-                
-                if (i > 0) json += ",";
-                json += "{\"offset\":" + String(minutesAgo) + ",";
-                json += "\"humidity\":" + String(dp.humidity, 1) + ",";
-                json += "\"temperature\":" + String(dp.temperature, 1) + ",";
-                json += "\"pressure\":" + String(dp.pressure, 1) + "}";
-            }
+    File file = SPIFFS.open(DATA_FILE, "r");
+    if (file) {
+        int count = 0;
+        while (file.available() >= sizeof(DataPoint)) {
+            DataPoint dp;
+            file.read((uint8_t*)&dp, sizeof(DataPoint));
+            count++;
         }
+        
+        file.seek(0);
+        int index = 0;
+        while (file.available() >= sizeof(DataPoint)) {
+            DataPoint dp;
+            file.read((uint8_t*)&dp, sizeof(DataPoint));
+            
+            unsigned long minutesAgo = (count - 1 - index);
+            
+            if (index > 0) server.sendContent(",");
+            
+            String json = "{\"offset\":" + String(minutesAgo) + ",";
+            json += "\"humidity\":" + String(dp.humidity, 1) + ",";
+            json += "\"temperature\":" + String(dp.temperature, 1) + ",";
+            json += "\"pressure\":" + String(dp.pressure, 1) + "}";
+            server.sendContent(json);
+            index++;
+        }
+        file.close();
     }
     
-    preferences.end();
-    json += "]";
-    
-    server.send(200, "application/json", json);
+    server.sendContent("]");
+    server.sendContent("");
 }
 
-// Save data point to NVS
+// Handle clear data request
+void handleClear() {
+    bool dataCleared = SPIFFS.remove(DATA_FILE);
+    bool minMaxCleared = SPIFFS.remove(MINMAX_FILE);
+    
+    // Reset min/max values in memory
+    minMaxValues.minHumidity = 999.0;
+    minMaxValues.maxHumidity = -999.0;
+    minMaxValues.minTemperature = 999.0;
+    minMaxValues.maxTemperature = -999.0;
+    minMaxValues.minPressure = 9999.0;
+    minMaxValues.maxPressure = 0.0;
+    
+    if (dataCleared || minMaxCleared) {
+        Serial.println("All data and min/max cleared");
+        server.send(200, "text/plain", "Data cleared");
+    } else {
+        Serial.println("Failed to clear data");
+        server.send(500, "text/plain", "Failed to clear data");
+    }
+}
+
+// Load min/max values from SPIFFS
+void loadMinMax() {
+    File file = SPIFFS.open(MINMAX_FILE, "r");
+    if (file && file.size() == sizeof(MinMax)) {
+        file.read((uint8_t*)&minMaxValues, sizeof(MinMax));
+        file.close();
+        Serial.println("Min/Max values loaded");
+    } else {
+        Serial.println("No min/max data found, using defaults");
+    }
+}
+
+// Save min/max values to SPIFFS
+void saveMinMax() {
+    File file = SPIFFS.open(MINMAX_FILE, "w");
+    if (file) {
+        file.write((uint8_t*)&minMaxValues, sizeof(MinMax));
+        file.close();
+    }
+}
+
+// Update min/max values
+void updateMinMax(float humidity, float temperature, float pressure) {
+    bool updated = false;
+    
+    if (humidity < minMaxValues.minHumidity) {
+        minMaxValues.minHumidity = humidity;
+        updated = true;
+    }
+    if (humidity > minMaxValues.maxHumidity) {
+        minMaxValues.maxHumidity = humidity;
+        updated = true;
+    }
+    if (temperature < minMaxValues.minTemperature) {
+        minMaxValues.minTemperature = temperature;
+        updated = true;
+    }
+    if (temperature > minMaxValues.maxTemperature) {
+        minMaxValues.maxTemperature = temperature;
+        updated = true;
+    }
+    if (pressure < minMaxValues.minPressure) {
+        minMaxValues.minPressure = pressure;
+        updated = true;
+    }
+    if (pressure > minMaxValues.maxPressure) {
+        minMaxValues.maxPressure = pressure;
+        updated = true;
+    }
+    
+    if (updated) {
+        saveMinMax();
+    }
+}
+
+// Save data point to SPIFFS
 void saveDataPoint(float humidity, float temperature, float pressure) {
-    preferences.begin("sensor_log", false); // Read-write
-    
-    int count = preferences.getInt("count", 0);
-    int startIdx = preferences.getInt("startIdx", 0);
-    
     DataPoint dp;
     dp.humidity = humidity;
     dp.temperature = temperature;
     dp.pressure = pressure;
     dp.timestamp = millis() / 60000; // Minutes since boot
     
-    // Calculate current index
-    int currentIdx = (startIdx + count) % MAX_DATA_POINTS;
-    
-    // Save data
-    String key = "d" + String(currentIdx);
-    preferences.putBytes(key.c_str(), &dp, sizeof(DataPoint));
-    
-    // Update count and startIdx
-    if (count < MAX_DATA_POINTS) {
-        count++;
-        preferences.putInt("count", count);
-    } else {
-        // Ring buffer is full, move start index
-        startIdx = (startIdx + 1) % MAX_DATA_POINTS;
-        preferences.putInt("startIdx", startIdx);
+    // Count existing data points
+    int count = 0;
+    File file = SPIFFS.open(DATA_FILE, "r");
+    if (file) {
+        count = file.size() / sizeof(DataPoint);
+        file.close();
     }
     
-    preferences.end();
+    // If we have MAX_DATA_POINTS, implement ring buffer
+    if (count >= MAX_DATA_POINTS) {
+        // Read all data points except the first one
+        File readFile = SPIFFS.open(DATA_FILE, "r");
+        File tempFile = SPIFFS.open("/temp.bin", "w");
+        
+        if (readFile && tempFile) {
+            // Skip first data point
+            readFile.seek(sizeof(DataPoint));
+            
+            // Copy remaining data
+            uint8_t buffer[sizeof(DataPoint)];
+            while (readFile.available() >= sizeof(DataPoint)) {
+                readFile.read(buffer, sizeof(DataPoint));
+                tempFile.write(buffer, sizeof(DataPoint));
+            }
+            
+            readFile.close();
+            tempFile.close();
+            
+            // Replace original file
+            SPIFFS.remove(DATA_FILE);
+            SPIFFS.rename("/temp.bin", DATA_FILE);
+        }
+    }
     
-    Serial.println("Data point saved: RH=" + String(humidity) + "% T=" + String(temperature) + "°C P=" + String(pressure) + "mbar");
+    // Append new data point
+    file = SPIFFS.open(DATA_FILE, "a");
+    if (file) {
+        file.write((uint8_t*)&dp, sizeof(DataPoint));
+        file.close();
+        Serial.println("Data point saved: RH=" + String(humidity) + "% T=" + String(temperature) + "°C P=" + String(pressure) + "mbar");
+        
+        // Update min/max values
+        updateMinMax(humidity, temperature, pressure);
+    } else {
+        Serial.println("Failed to save data point");
+    }
 }
 
 void setup() {
@@ -316,14 +446,29 @@ void setup() {
     server.on("/history", handleHistory);
     server.on("/data", handleData);
     server.on("/csv", handleCSV);
+    server.on("/clear", HTTP_POST, handleClear);
     server.begin();
     Serial.println("HTTP server started");
     
-    // Initialize NVS
-    preferences.begin("sensor_log", false);
-    // Optionally clear old data on first boot (comment out after first use)
-    // preferences.clear();
-    preferences.end();
+    // Initialize SPIFFS
+    if (!SPIFFS.begin(true)) {
+        Serial.println("SPIFFS Mount Failed");
+    } else {
+        Serial.println("SPIFFS Mounted Successfully");
+        Serial.print("Total space: ");
+        Serial.print(SPIFFS.totalBytes());
+        Serial.println(" bytes");
+        Serial.print("Used space: ");
+        Serial.print(SPIFFS.usedBytes());
+        Serial.println(" bytes");
+        
+        // Load min/max values
+        loadMinMax();
+        
+        // Optionally clear old data on first boot (uncomment if needed)
+        // SPIFFS.remove(DATA_FILE);
+        // SPIFFS.remove(MINMAX_FILE);
+    }
     
     delay(3000); // Show WiFi info for 3 seconds
 }

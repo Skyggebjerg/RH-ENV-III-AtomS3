@@ -280,4 +280,5 @@
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/tools/sdk/esp32s3/include/nghttp/port/include/http_parser.h \
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src/Uri.h \
  C:/Users/ole/.platformio/packages/framework-arduinoespressif32/libraries/WebServer/src/detail/RequestHandler.h \
- C:/Users/ole/.platformio/packages/framework-arduinoespressif32/libraries/Preferences/src/Preferences.h
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/libraries/SPIFFS/src/SPIFFS.h \
+ C:/Users/ole/.platformio/packages/framework-arduinoespressif32/libraries/FS/src/FS.h
