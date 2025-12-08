@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 /**
- * @file ENV_III_optimized.ino
+ * @file ENV_III_simple_graph.ino
  * @date 2025-12-04
  *
  * Hardwares: M5AtomS3 + Unit ENV_III
@@ -9,7 +9,6 @@
  * M5UnitENV: https://github.com/m5stack/M5Unit-ENV
  */
 
-//#include "M5AtomS3.h"
 #include <M5GFX.h>
 #include "M5UnitENV.h"
 #include <WiFi.h>
@@ -38,7 +37,7 @@ const uint16_t SAMPLE_INTERVAL_MIN = 5;
 const unsigned long LOG_INTERVAL   = SAMPLE_INTERVAL_MIN * 60000UL;  // ms
 
 // Data logging settings
-const int MAX_DATA_POINTS  = 1440;            // stadig max 1440 punkter
+const int MAX_DATA_POINTS  = 1440;
 unsigned long lastLogTime = 0;
 
 // Hvor mange punkter vi vil sende til graferne
@@ -49,7 +48,7 @@ struct DataPoint {
     float humidity;
     float temperature;
     float pressure;
-    unsigned long timestamp; // Minutes since boot (ikke brugt i grafen lige nu)
+    unsigned long timestamp; // Minutes since boot (ikke brugt direkte)
 };
 
 // Min/Max tracking
@@ -110,7 +109,7 @@ void handleRoot() {
 }
 
 // -------------------------------------------------------------------
-// HTML: /history (grafer + start/slut-tider)
+// HTML: /history (egen canvas-graf + start/slut-tider)
 // -------------------------------------------------------------------
 void handleHistory() {
     String html = "<!DOCTYPE html><html><head>";
@@ -138,53 +137,82 @@ void handleHistory() {
     html += "<script>";
     // JS-konstant med samme interval som i C++
     html += "const SAMPLE_INTERVAL_MIN=" + String(SAMPLE_INTERVAL_MIN) + ";";
+
+    // Tegnefunktion (din oprindelige)
     html += "function drawChart(canvasId,data,color,label){";
-    html += "const canvas=document.getElementById(canvasId);";
-    html += "const ctx=canvas.getContext('2d');";
-    html += "const w=canvas.width=canvas.offsetWidth;";
-    html += "const h=canvas.height=250;";
-    html += "const padding=40;";
-    html += "const chartW=w-2*padding;";
-    html += "const chartH=h-2*padding;";
-    html += "if(data.length===0)return;";
-    html += "const min=Math.min(...data);";
-    html += "const max=Math.max(...data);";
-    html += "const range=max-min||1;";
-    html += "ctx.clearRect(0,0,w,h);";
-    html += "ctx.strokeStyle='#444';ctx.lineWidth=1;";
-    html += "for(let i=0;i<5;i++){ctx.beginPath();const y=padding+i*chartH/4;ctx.moveTo(padding,y);ctx.lineTo(w-padding,y);ctx.stroke();}";
-    html += "ctx.fillStyle='#888';ctx.font='12px Arial';";
-    html += "for(let i=0;i<=4;i++){const val=(max-i*range/4).toFixed(1);ctx.fillText(val,5,padding+i*chartH/4+4);}";
-    html += "ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();";
-    html += "data.forEach((v,i)=>{";
-    html += "const x=padding+i*chartW/(data.length-1||1);";
-    html += "const y=padding+chartH-(v-min)*chartH/range;";
-    html += "i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);";
-    html += "});";
-    html += "ctx.stroke();";
+    html += "  const canvas=document.getElementById(canvasId);";
+    html += "  const ctx=canvas.getContext('2d');";
+    html += "  const w=canvas.width=canvas.offsetWidth;";
+    html += "  const h=canvas.height=250;";
+    html += "  const padding=40;";
+    html += "  const chartW=w-2*padding;";
+    html += "  const chartH=h-2*padding;";
+    html += "  ctx.clearRect(0,0,w,h);";
+    html += "  if(data.length===0)return;";
+    html += "  const min=Math.min(...data);";
+    html += "  const max=Math.max(...data);";
+    html += "  const range=max-min||1;";
+    html += "  ctx.strokeStyle='#444';ctx.lineWidth=1;";
+    html += "  for(let i=0;i<5;i++){";
+    html += "    ctx.beginPath();";
+    html += "    const y=padding+i*chartH/4;";
+    html += "    ctx.moveTo(padding,y);";
+    html += "    ctx.lineTo(w-padding,y);";
+    html += "    ctx.stroke();";
+    html += "  }";
+    html += "  ctx.fillStyle='#888';ctx.font='12px Arial';";
+    html += "  for(let i=0;i<=4;i++){";
+    html += "    const val=(max-i*range/4).toFixed(1);";
+    html += "    ctx.fillText(val,5,padding+i*chartH/4+4);";
+    html += "  }";
+    html += "  ctx.strokeStyle=color;ctx.lineWidth=2;";
+    html += "  ctx.beginPath();";
+    html += "  data.forEach((v,i)=>{";
+    html += "    const x=padding+i*chartW/(data.length-1||1);";
+    html += "    const y=padding+chartH-(v-min)*chartH/range;";
+    html += "    if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);";
+    html += "  });";
+    html += "  ctx.stroke();";
     html += "}";
-    html += "fetch('/data').then(r=>r.json()).then(data=>{";
-    html += "document.getElementById('loading').style.display='none';";
-    html += "const timeInfo=document.getElementById('timeinfo');";
-    html += "if(data.length===0){timeInfo.textContent='No data logged yet';return;}";
-    // Beregn start/slut-tid ud fra telefonens ur
-    html += "const n=data.length;";
-    html += "const now=new Date();";
-    html += "const endTime=now;";
-    html += "const spanMin=n*SAMPLE_INTERVAL_MIN;";  // efter din 10*5-logik
-    html += "const startTime=new Date(now.getTime()-spanMin*60000);";
-    html += "const fmt=t=>t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});";
-    html += "timeInfo.textContent='Start: '+fmt(startTime)+'  |  Slut: '+fmt(endTime);";
-    // Tegn grafer
-    html += "drawChart('chart1',data.map(d=>d.humidity),'rgb(75,192,192)','Humidity');";
-    html += "drawChart('chart2',data.map(d=>d.temperature),'rgb(255,99,132)','Temperature');";
-    html += "drawChart('chart3',data.map(d=>d.pressure),'rgb(255,205,86)','Pressure');";
-    html += "});";
+
+    // Clear-knap
     html += "function clearData(){";
-    html += "if(confirm('Are you sure you want to delete all logged data?')){";
-    html += "fetch('/clear',{method:'POST'}).then(()=>location.reload());";
+    html += "  if(confirm('Are you sure you want to delete all logged data?')){";
+    html += "    fetch('/clear',{method:'POST'}).then(()=>location.reload());";
+    html += "  }";
     html += "}";
+
+    html += "function fmtTime(t){";
+    html += "  return t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});";
     html += "}";
+
+    // Hent data og tegn
+    html += "fetch('/data').then(r=>r.json()).then(data=>{";
+    html += "  const loading=document.getElementById('loading');";
+    html += "  const timeInfo=document.getElementById('timeinfo');";
+    html += "  loading.style.display='none';";
+    html += "  if(!data || data.length===0){";
+    html += "    timeInfo.textContent='No data logged yet';";
+    html += "    return;";
+    html += "  }";
+    html += "  const n=data.length;";
+    html += "  const hum=data.map(d=>d.humidity);";
+    html += "  const tmp=data.map(d=>d.temperature);";
+    html += "  const prs=data.map(d=>d.pressure);";
+
+    // Start/Slut-tid ud fra telefonen og antal punkter * interval
+    html += "  const now=new Date();";
+    html += "  const spanMin=n*SAMPLE_INTERVAL_MIN;"; // efter din 10*5-logik
+    html += "  const start=new Date(now.getTime()-spanMin*60000);";
+    html += "  timeInfo.textContent='Start: '+fmtTime(start)+'  |  Slut: '+fmtTime(now);";
+
+    html += "  drawChart('chart1',hum,'rgb(75,192,192)','Humidity');";
+    html += "  drawChart('chart2',tmp,'rgb(255,99,132)','Temperature');";
+    html += "  drawChart('chart3',prs,'rgb(255,205,86)','Pressure');";
+    html += "}).catch(e=>{";
+    html += "  document.getElementById('loading').textContent='Error loading data: '+e;";
+    html += "});";
+
     html += "</script>";
     html += "</body></html>";
     
@@ -234,7 +262,7 @@ void handleCSV() {
 }
 
 // -------------------------------------------------------------------
-// JSON data til grafer
+// JSON data til grafer (optimeret, kun seneste N punkter)
 // -------------------------------------------------------------------
 void handleData() {
     server.setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -253,7 +281,6 @@ void handleData() {
         file.seek(startIndex * sizeof(DataPoint));
 
         bool first = true;
-        int globalIndex = startIndex;
         DataPoint dp;
 
         while (file.available() >= (int)sizeof(DataPoint)) {
@@ -262,13 +289,9 @@ void handleData() {
             if (!first) server.sendContent(",");
             first = false;
 
-            unsigned long minutesAgo = (unsigned long)(totalPoints - 1 - globalIndex) * SAMPLE_INTERVAL_MIN;
-
             String json;
-            json.reserve(96);
-            json  = "{\"offset\":";
-            json += String(minutesAgo);
-            json += ",\"humidity\":";
+            json.reserve(80);
+            json  = "{\"humidity\":";
             json += String(dp.humidity, 1);
             json += ",\"temperature\":";
             json += String(dp.temperature, 1);
@@ -277,7 +300,6 @@ void handleData() {
             json += "}";
 
             server.sendContent(json);
-            globalIndex++;
         }
 
         file.close();
@@ -449,6 +471,19 @@ void setup() {
         }
     }
 
+    if (!SPIFFS.begin(true)) {
+        Serial.println("SPIFFS Mount Failed");
+    } else {
+        Serial.println("SPIFFS Mounted Successfully");
+        Serial.print("Total space: ");
+        Serial.print(SPIFFS.totalBytes());
+        Serial.println(" bytes");
+        Serial.print("Used space: ");
+        Serial.print(SPIFFS.usedBytes());
+        Serial.println(" bytes");
+        loadMinMax();
+    }
+
     Serial.println("Setting up WiFi Access Point...");
     canvas.fillScreen(BLACK);
     canvas.setTextSize(1);
@@ -482,22 +517,9 @@ void setup() {
     server.on("/data",   handleData);
     server.on("/csv",    handleCSV);
     server.on("/clear",  HTTP_POST, handleClear);
+
     server.begin();
     Serial.println("HTTP server started");
-    
-    if (!SPIFFS.begin(true)) {
-        Serial.println("SPIFFS Mount Failed");
-    } else {
-        Serial.println("SPIFFS Mounted Successfully");
-        Serial.print("Total space: ");
-        Serial.print(SPIFFS.totalBytes());
-        Serial.println(" bytes");
-        Serial.print("Used space: ");
-        Serial.print(SPIFFS.usedBytes());
-        Serial.println(" bytes");
-        
-        loadMinMax();
-    }
     
     delay(3000);
 }
