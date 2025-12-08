@@ -1,12 +1,11 @@
 #include <Arduino.h>
 
 /**
- * @file ENV_III.ino
+ * @file ENV_III_optimized.ino
  * @date 2025-12-04
  *
- *
- * @Hardwares: M5AtomS3 + Unit ENV_III
- * @Dependent Library:
+ * Hardwares: M5AtomS3 + Unit ENV_III
+ * Dependent Library:
  * M5UnitENV: https://github.com/m5stack/M5Unit-ENV
  */
 
@@ -24,52 +23,57 @@ QMP6988 qmp;
 M5GFX display;
 M5Canvas canvas(&display);
 
-const char* DATA_FILE = "/sensor_data.bin";
+const char* DATA_FILE   = "/sensor_data.bin";
+const char* MINMAX_FILE = "/minmax.bin";
 
-// WiFi AP credentials
-const char* ssid = "AtomS3-RH-Sensor";
+// *** WiFi AP ***
+const char* ssid     = "AtomS3-RH-Sensor";
 const char* password = "12345678";
 
 // RH threshold for alert (change this value to adjust threshold)
 const int RH_THRESHOLD = 50;
 
 // Data logging settings
-const int MAX_DATA_POINTS = 1440; // 24 hours * 60 minutes
+const int MAX_DATA_POINTS  = 1440;            // 24 hours * 60 minutes
+const unsigned long LOG_INTERVAL = 60000UL;   // 1 minute in ms
 unsigned long lastLogTime = 0;
-const unsigned long LOG_INTERVAL = 60000; // 1 minute in milliseconds
-int dataIndex = 0;
+
+// *** Hvordan mange punkter vi vil sende til graferne ***
+// (de sidste MAX_POINTS_TO_SEND, så History bliver hurtigere)
+const int MAX_POINTS_TO_SEND = 300;           // OPTIMIZED: begrænsning til grafer
 
 // Data structure for logged readings
 struct DataPoint {
     float humidity;
     float temperature;
     float pressure;
-    unsigned long timestamp; // Minutes since boot
+    unsigned long timestamp; // Minutes since boot (ikke brugt i grafen lige nu)
 };
 
 // Min/Max tracking
 struct MinMax {
-    float minHumidity = 999.0;
-    float maxHumidity = -999.0;
-    float minTemperature = 999.0;
-    float maxTemperature = -999.0;
-    float minPressure = 9999.0;
-    float maxPressure = 0.0;
+    float minHumidity   = 999.0;
+    float maxHumidity   = -999.0;
+    float minTemperature= 999.0;
+    float maxTemperature= -999.0;
+    float minPressure   = 9999.0;
+    float maxPressure   = 0.0;
 };
 
 MinMax minMaxValues;
-const char* MINMAX_FILE = "/minmax.bin";
 
 // Web server on port 80
 WebServer server(80);
 
-// HTML page with auto-refresh
+// -------------------------------------------------------------------
+// HTML: Forside /
+// -------------------------------------------------------------------
 void handleRoot() {
-    int humidity = (int)sht3x.humidity;
+    int humidity      = (int)sht3x.humidity;
     float temperature = sht3x.cTemp;
-    float pressure = qmp.pressure / 100.0; // Convert Pa to mbar
-    bool isAlert = (humidity >= RH_THRESHOLD);
-    String bgColor = isAlert ? "#cc0000" : "#1a1a1a";
+    float pressure    = qmp.pressure / 100.0; // Pa -> mbar
+    bool isAlert      = (humidity >= RH_THRESHOLD);
+    String bgColor    = isAlert ? "#cc0000" : "#1a1a1a";
     
     String html = "<!DOCTYPE html><html><head>";
     html += "<meta charset='UTF-8'>";
@@ -103,7 +107,9 @@ void handleRoot() {
     server.send(200, "text/html", html);
 }
 
-// Handle history data request
+// -------------------------------------------------------------------
+// HTML: /history (grafer + knapper)
+// -------------------------------------------------------------------
 void handleHistory() {
     String html = "<!DOCTYPE html><html><head>";
     html += "<meta charset='UTF-8'>";
@@ -139,6 +145,7 @@ void handleHistory() {
     html += "const min=Math.min(...data);";
     html += "const max=Math.max(...data);";
     html += "const range=max-min||1;";
+    html += "ctx.clearRect(0,0,w,h);"; // OPTIMIZED: ryd canvas før tegning
     html += "ctx.strokeStyle='#444';ctx.lineWidth=1;";
     html += "for(let i=0;i<5;i++){ctx.beginPath();const y=padding+i*chartH/4;ctx.moveTo(padding,y);ctx.lineTo(w-padding,y);ctx.stroke();}";
     html += "ctx.fillStyle='#888';ctx.font='12px Arial';";
@@ -169,35 +176,40 @@ void handleHistory() {
     server.send(200, "text/html", html);
 }
 
-// Handle CSV download - returns raw CSV data
+// -------------------------------------------------------------------
+// CSV download - OPTIMERET til kun én gennemløb
+// -------------------------------------------------------------------
 void handleCSV() {
     server.sendHeader("Content-Disposition", "attachment; filename=sensor_data.csv");
     server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     server.send(200, "text/csv", "");
-    
+
+    // header
     server.sendContent("Minutes Ago,Humidity (%),Temperature (°C),Pressure (mbar)\n");
     
     File file = SPIFFS.open(DATA_FILE, "r");
     if (file) {
-        int count = 0;
-        while (file.available() >= sizeof(DataPoint)) {
-            DataPoint dp;
-            file.read((uint8_t*)&dp, sizeof(DataPoint));
-            count++;
-        }
-        
-        file.seek(0);
+        // OPTIMIZED: brug filstørrelse til at beregne antal punkter
+        int totalPoints = file.size() / sizeof(DataPoint);
         int index = 0;
-        while (file.available() >= sizeof(DataPoint)) {
-            DataPoint dp;
+        DataPoint dp;
+
+        while (file.available() >= (int)sizeof(DataPoint)) {
             file.read((uint8_t*)&dp, sizeof(DataPoint));
-            
-            unsigned long minutesAgo = (count - 1 - index);
-            
-            String line = String(minutesAgo) + ",";
-            line += String(dp.humidity, 1) + ",";
-            line += String(dp.temperature, 1) + ",";
-            line += String(dp.pressure, 1) + "\n";
+
+            unsigned long minutesAgo = (totalPoints - 1 - index);
+
+            String line;
+            line.reserve(64);
+            line  = String(minutesAgo);
+            line += ",";
+            line += String(dp.humidity, 1);
+            line += ",";
+            line += String(dp.temperature, 1);
+            line += ",";
+            line += String(dp.pressure, 1);
+            line += "\n";
+
             server.sendContent(line);
             index++;
         }
@@ -207,58 +219,78 @@ void handleCSV() {
     server.sendContent("");
 }
 
-// Handle JSON data for dynamic loading
+// -------------------------------------------------------------------
+// JSON data til grafer - OPTIMERET
+// - Læser filen én gang
+// - Sender kun de seneste MAX_POINTS_TO_SEND punkter
+// -------------------------------------------------------------------
 void handleData() {
     server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     server.send(200, "application/json", "");
-    
     server.sendContent("[");
-    
+
     File file = SPIFFS.open(DATA_FILE, "r");
     if (file) {
-        int count = 0;
-        while (file.available() >= sizeof(DataPoint)) {
-            DataPoint dp;
-            file.read((uint8_t*)&dp, sizeof(DataPoint));
-            count++;
+        int totalPoints = file.size() / sizeof(DataPoint);
+
+        int startIndex = 0;
+        if (totalPoints > MAX_POINTS_TO_SEND) {
+            startIndex = totalPoints - MAX_POINTS_TO_SEND;
         }
-        
-        file.seek(0);
-        int index = 0;
-        while (file.available() >= sizeof(DataPoint)) {
-            DataPoint dp;
+
+        // Hop til første punkt vi vil sende
+        file.seek(startIndex * sizeof(DataPoint));
+
+        bool first = true;
+        int globalIndex = startIndex;
+        DataPoint dp;
+
+        while (file.available() >= (int)sizeof(DataPoint)) {
             file.read((uint8_t*)&dp, sizeof(DataPoint));
-            
-            unsigned long minutesAgo = (count - 1 - index);
-            
-            if (index > 0) server.sendContent(",");
-            
-            String json = "{\"offset\":" + String(minutesAgo) + ",";
-            json += "\"humidity\":" + String(dp.humidity, 1) + ",";
-            json += "\"temperature\":" + String(dp.temperature, 1) + ",";
-            json += "\"pressure\":" + String(dp.pressure, 1) + "}";
+
+            if (!first) server.sendContent(",");
+            first = false;
+
+            // minutesAgo er stadig korrekt ift. hele historikken
+            unsigned long minutesAgo = (totalPoints - 1 - globalIndex);
+
+            String json;
+            json.reserve(96);
+            json  = "{\"offset\":";
+            json += String(minutesAgo);
+            json += ",\"humidity\":";
+            json += String(dp.humidity, 1);
+            json += ",\"temperature\":";
+            json += String(dp.temperature, 1);
+            json += ",\"pressure\":";
+            json += String(dp.pressure, 1);
+            json += "}";
+
             server.sendContent(json);
-            index++;
+            globalIndex++;
         }
+
         file.close();
     }
-    
+
     server.sendContent("]");
     server.sendContent("");
 }
 
-// Handle clear data request
+// -------------------------------------------------------------------
+// Clear data
+// -------------------------------------------------------------------
 void handleClear() {
-    bool dataCleared = SPIFFS.remove(DATA_FILE);
+    bool dataCleared   = SPIFFS.remove(DATA_FILE);
     bool minMaxCleared = SPIFFS.remove(MINMAX_FILE);
     
     // Reset min/max values in memory
-    minMaxValues.minHumidity = 999.0;
-    minMaxValues.maxHumidity = -999.0;
+    minMaxValues.minHumidity    = 999.0;
+    minMaxValues.maxHumidity    = -999.0;
     minMaxValues.minTemperature = 999.0;
     minMaxValues.maxTemperature = -999.0;
-    minMaxValues.minPressure = 9999.0;
-    minMaxValues.maxPressure = 0.0;
+    minMaxValues.minPressure    = 9999.0;
+    minMaxValues.maxPressure    = 0.0;
     
     if (dataCleared || minMaxCleared) {
         Serial.println("All data and min/max cleared");
@@ -269,7 +301,9 @@ void handleClear() {
     }
 }
 
-// Load min/max values from SPIFFS
+// -------------------------------------------------------------------
+// Load / save min/max
+// -------------------------------------------------------------------
 void loadMinMax() {
     File file = SPIFFS.open(MINMAX_FILE, "r");
     if (file && file.size() == sizeof(MinMax)) {
@@ -281,7 +315,6 @@ void loadMinMax() {
     }
 }
 
-// Save min/max values to SPIFFS
 void saveMinMax() {
     File file = SPIFFS.open(MINMAX_FILE, "w");
     if (file) {
@@ -290,7 +323,9 @@ void saveMinMax() {
     }
 }
 
-// Update min/max values
+// -------------------------------------------------------------------
+// Update min/max
+// -------------------------------------------------------------------
 void updateMinMax(float humidity, float temperature, float pressure) {
     bool updated = false;
     
@@ -324,15 +359,17 @@ void updateMinMax(float humidity, float temperature, float pressure) {
     }
 }
 
-// Save data point to SPIFFS
+// -------------------------------------------------------------------
+// Save data point til SPIFFS (ringbuffer i fil)
+// -------------------------------------------------------------------
 void saveDataPoint(float humidity, float temperature, float pressure) {
     DataPoint dp;
-    dp.humidity = humidity;
+    dp.humidity    = humidity;
     dp.temperature = temperature;
-    dp.pressure = pressure;
-    dp.timestamp = millis() / 60000; // Minutes since boot
+    dp.pressure    = pressure;
+    dp.timestamp   = millis() / 60000UL; // Minutes since boot
     
-    // Count existing data points
+    // Count existing data points via filstørrelse
     int count = 0;
     File file = SPIFFS.open(DATA_FILE, "r");
     if (file) {
@@ -340,19 +377,18 @@ void saveDataPoint(float humidity, float temperature, float pressure) {
         file.close();
     }
     
-    // If we have MAX_DATA_POINTS, implement ring buffer
+    // Hvis vi har MAX_DATA_POINTS, implementer ringbuffer ved at fjerne ældste
     if (count >= MAX_DATA_POINTS) {
-        // Read all data points except the first one
         File readFile = SPIFFS.open(DATA_FILE, "r");
         File tempFile = SPIFFS.open("/temp.bin", "w");
         
         if (readFile && tempFile) {
-            // Skip first data point
+            // Skip første datapunkt
             readFile.seek(sizeof(DataPoint));
             
-            // Copy remaining data
+            // Kopiér resten
             uint8_t buffer[sizeof(DataPoint)];
-            while (readFile.available() >= sizeof(DataPoint)) {
+            while (readFile.available() >= (int)sizeof(DataPoint)) {
                 readFile.read(buffer, sizeof(DataPoint));
                 tempFile.write(buffer, sizeof(DataPoint));
             }
@@ -360,13 +396,13 @@ void saveDataPoint(float humidity, float temperature, float pressure) {
             readFile.close();
             tempFile.close();
             
-            // Replace original file
+            // Erstat original fil
             SPIFFS.remove(DATA_FILE);
             SPIFFS.rename("/temp.bin", DATA_FILE);
         }
     }
     
-    // Append new data point
+    // Append nyt datapunkt
     file = SPIFFS.open(DATA_FILE, "a");
     if (file) {
         file.write((uint8_t*)&dp, sizeof(DataPoint));
@@ -380,6 +416,9 @@ void saveDataPoint(float humidity, float temperature, float pressure) {
     }
 }
 
+// -------------------------------------------------------------------
+// setup()
+// -------------------------------------------------------------------
 void setup() {
     Serial.begin(115200);
     
@@ -442,11 +481,11 @@ void setup() {
     canvas.pushSprite(0, 0);
     
     // Setup web server
-    server.on("/", handleRoot);
-    server.on("/history", handleHistory);
-    server.on("/data", handleData);
-    server.on("/csv", handleCSV);
-    server.on("/clear", HTTP_POST, handleClear);
+    server.on("/",       handleRoot);
+    server.on("/history",handleHistory);
+    server.on("/data",   handleData);
+    server.on("/csv",    handleCSV);
+    server.on("/clear",  HTTP_POST, handleClear);
     server.begin();
     Serial.println("HTTP server started");
     
@@ -464,42 +503,24 @@ void setup() {
         
         // Load min/max values
         loadMinMax();
-        
-        // Optionally clear old data on first boot (uncomment if needed)
-        // SPIFFS.remove(DATA_FILE);
-        // SPIFFS.remove(MINMAX_FILE);
     }
     
     delay(3000); // Show WiFi info for 3 seconds
 }
 
+// -------------------------------------------------------------------
+// loop()
+// -------------------------------------------------------------------
 void loop() {
     // Handle web server clients
     server.handleClient();
     
     if (sht3x.update()) {
-        Serial.println("-----SHT3X-----");
-        // Serial.print("Temperature: ");
-        // Serial.print(sht3x.cTemp);
-        // Serial.println(" degrees C");
-        // Serial.print("Humidity: ");
-        // Serial.print(sht3x.humidity);
-        // Serial.println("% rH");
-        // Serial.println("-------------\r\n");
+        // Sensor update OK
     }
 
     if (qmp.update()) {
-        // Serial.println("-----QMP6988-----");
-        // Serial.print(F("Temperature: "));
-        // Serial.print(qmp.cTemp);
-        // Serial.println(" *C");
-        // Serial.print(F("Pressure: "));
-        // Serial.print(qmp.pressure);
-        // Serial.println(" Pa");
-        // Serial.print(F("Approx altitude: "));
-        // Serial.print(qmp.altitude);
-        // Serial.println(" m");
-        // Serial.println("-------------\r\n");
+        // Sensor update OK
     }
     
     // Log data every minute
@@ -508,40 +529,24 @@ void loop() {
         saveDataPoint(sht3x.humidity, sht3x.cTemp, qmp.pressure / 100.0);
     }
     
-    // Display all data on screen using canvas
+    // Display (kun RH stort tal)
     canvas.fillScreen(BLACK);
     
-    // Display only humidity - large centered number with smooth font
     int humidity = (int)sht3x.humidity;
-    char humidityStr[4];
-    sprintf(humidityStr, "%d", humidity);
+    char humidityStr[8];
+    snprintf(humidityStr, sizeof(humidityStr), "%d", humidity);
     
-    // Use built-in smooth font
     canvas.setTextSize(2);
     canvas.setFont(&fonts::Font7);
     canvas.setTextDatum(middle_center);
     
-    // Change color based on humidity value using global threshold
     if (humidity >= RH_THRESHOLD) {
         canvas.setTextColor(RED);
     } else {
         canvas.setTextColor(WHITE);
     }
     
-    // Center the text
     canvas.drawString(humidityStr, display.width() / 2, display.height() / 2);
-    
-    // // Previous display code - all sensor data
-    // canvas.setTextSize(2);
-    // canvas.setCursor(5, 5);
-    // canvas.printf("T : %.1fC", sht3x.cTemp);
-    // canvas.setCursor(5, 35);
-    // canvas.printf("RH: %.1f%%", sht3x.humidity);
-    // canvas.setCursor(5, 65);
-    // canvas.printf("T : %.1fC", qmp.cTemp);
-    // canvas.setCursor(5, 95);
-    // canvas.printf("P : %.0fPa", qmp.pressure / 100);
-    
     canvas.pushSprite(0, 0);
     
     delay(1000);
