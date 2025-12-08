@@ -30,17 +30,19 @@ const char* MINMAX_FILE = "/minmax.bin";
 const char* ssid     = "AtomS3-RH-Sensor";
 const char* password = "12345678";
 
-// RH threshold for alert (change this value to adjust threshold)
+// RH threshold for alert
 const int RH_THRESHOLD = 50;
 
+// *** Sampling interval i minutter (NEM AT ÆNDRE) ***
+const uint16_t SAMPLE_INTERVAL_MIN = 5;
+const unsigned long LOG_INTERVAL   = SAMPLE_INTERVAL_MIN * 60000UL;  // ms
+
 // Data logging settings
-const int MAX_DATA_POINTS  = 1440;            // 24 hours * 60 minutes
-const unsigned long LOG_INTERVAL = 60000UL;   // 1 minute in ms
+const int MAX_DATA_POINTS  = 1440;            // stadig max 1440 punkter
 unsigned long lastLogTime = 0;
 
-// *** Hvordan mange punkter vi vil sende til graferne ***
-// (de sidste MAX_POINTS_TO_SEND, så History bliver hurtigere)
-const int MAX_POINTS_TO_SEND = 300;           // OPTIMIZED: begrænsning til grafer
+// Hvor mange punkter vi vil sende til graferne
+const int MAX_POINTS_TO_SEND = 300;
 
 // Data structure for logged readings
 struct DataPoint {
@@ -108,7 +110,7 @@ void handleRoot() {
 }
 
 // -------------------------------------------------------------------
-// HTML: /history (grafer + knapper)
+// HTML: /history (grafer + start/slut-tider)
 // -------------------------------------------------------------------
 void handleHistory() {
     String html = "<!DOCTYPE html><html><head>";
@@ -128,11 +130,14 @@ void handleHistory() {
     html += "<a href='/' class='button'>Back to Current</a>";
     html += "<a href='/csv' class='button'>Download CSV</a>";
     html += "<button onclick='clearData()' class='button' style='background-color:#f44336;'>Clear All Data</button>";
+    html += "<div id='timeinfo' style='margin-top:10px;color:#ccc;font-size:14px;'></div>";
     html += "<div id='loading'>Loading data...</div>";
     html += "<div class='chart-container'><h2>Humidity (%)</h2><canvas id='chart1'></canvas></div>";
     html += "<div class='chart-container'><h2>Temperature (°C)</h2><canvas id='chart2'></canvas></div>";
     html += "<div class='chart-container'><h2>Pressure (mbar)</h2><canvas id='chart3'></canvas></div>";
     html += "<script>";
+    // JS-konstant med samme interval som i C++
+    html += "const SAMPLE_INTERVAL_MIN=" + String(SAMPLE_INTERVAL_MIN) + ";";
     html += "function drawChart(canvasId,data,color,label){";
     html += "const canvas=document.getElementById(canvasId);";
     html += "const ctx=canvas.getContext('2d');";
@@ -145,7 +150,7 @@ void handleHistory() {
     html += "const min=Math.min(...data);";
     html += "const max=Math.max(...data);";
     html += "const range=max-min||1;";
-    html += "ctx.clearRect(0,0,w,h);"; // OPTIMIZED: ryd canvas før tegning
+    html += "ctx.clearRect(0,0,w,h);";
     html += "ctx.strokeStyle='#444';ctx.lineWidth=1;";
     html += "for(let i=0;i<5;i++){ctx.beginPath();const y=padding+i*chartH/4;ctx.moveTo(padding,y);ctx.lineTo(w-padding,y);ctx.stroke();}";
     html += "ctx.fillStyle='#888';ctx.font='12px Arial';";
@@ -160,7 +165,17 @@ void handleHistory() {
     html += "}";
     html += "fetch('/data').then(r=>r.json()).then(data=>{";
     html += "document.getElementById('loading').style.display='none';";
-    html += "if(data.length===0){document.body.innerHTML+='<p>No data logged yet</p>';return;}";
+    html += "const timeInfo=document.getElementById('timeinfo');";
+    html += "if(data.length===0){timeInfo.textContent='No data logged yet';return;}";
+    // Beregn start/slut-tid ud fra telefonens ur
+    html += "const n=data.length;";
+    html += "const now=new Date();";
+    html += "const endTime=now;";
+    html += "const spanMin=n*SAMPLE_INTERVAL_MIN;";  // efter din 10*5-logik
+    html += "const startTime=new Date(now.getTime()-spanMin*60000);";
+    html += "const fmt=t=>t.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});";
+    html += "timeInfo.textContent='Start: '+fmt(startTime)+'  |  Slut: '+fmt(endTime);";
+    // Tegn grafer
     html += "drawChart('chart1',data.map(d=>d.humidity),'rgb(75,192,192)','Humidity');";
     html += "drawChart('chart2',data.map(d=>d.temperature),'rgb(255,99,132)','Temperature');";
     html += "drawChart('chart3',data.map(d=>d.pressure),'rgb(255,205,86)','Pressure');";
@@ -177,19 +192,17 @@ void handleHistory() {
 }
 
 // -------------------------------------------------------------------
-// CSV download - OPTIMERET til kun én gennemløb
+// CSV download
 // -------------------------------------------------------------------
 void handleCSV() {
     server.sendHeader("Content-Disposition", "attachment; filename=sensor_data.csv");
     server.setContentLength(CONTENT_LENGTH_UNKNOWN);
     server.send(200, "text/csv", "");
 
-    // header
     server.sendContent("Minutes Ago,Humidity (%),Temperature (°C),Pressure (mbar)\n");
     
     File file = SPIFFS.open(DATA_FILE, "r");
     if (file) {
-        // OPTIMIZED: brug filstørrelse til at beregne antal punkter
         int totalPoints = file.size() / sizeof(DataPoint);
         int index = 0;
         DataPoint dp;
@@ -197,7 +210,8 @@ void handleCSV() {
         while (file.available() >= (int)sizeof(DataPoint)) {
             file.read((uint8_t*)&dp, sizeof(DataPoint));
 
-            unsigned long minutesAgo = (totalPoints - 1 - index);
+            // nu i minutter, med step = SAMPLE_INTERVAL_MIN
+            unsigned long minutesAgo = (unsigned long)(totalPoints - 1 - index) * SAMPLE_INTERVAL_MIN;
 
             String line;
             line.reserve(64);
@@ -220,9 +234,7 @@ void handleCSV() {
 }
 
 // -------------------------------------------------------------------
-// JSON data til grafer - OPTIMERET
-// - Læser filen én gang
-// - Sender kun de seneste MAX_POINTS_TO_SEND punkter
+// JSON data til grafer
 // -------------------------------------------------------------------
 void handleData() {
     server.setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -238,7 +250,6 @@ void handleData() {
             startIndex = totalPoints - MAX_POINTS_TO_SEND;
         }
 
-        // Hop til første punkt vi vil sende
         file.seek(startIndex * sizeof(DataPoint));
 
         bool first = true;
@@ -251,8 +262,7 @@ void handleData() {
             if (!first) server.sendContent(",");
             first = false;
 
-            // minutesAgo er stadig korrekt ift. hele historikken
-            unsigned long minutesAgo = (totalPoints - 1 - globalIndex);
+            unsigned long minutesAgo = (unsigned long)(totalPoints - 1 - globalIndex) * SAMPLE_INTERVAL_MIN;
 
             String json;
             json.reserve(96);
@@ -284,7 +294,6 @@ void handleClear() {
     bool dataCleared   = SPIFFS.remove(DATA_FILE);
     bool minMaxCleared = SPIFFS.remove(MINMAX_FILE);
     
-    // Reset min/max values in memory
     minMaxValues.minHumidity    = 999.0;
     minMaxValues.maxHumidity    = -999.0;
     minMaxValues.minTemperature = 999.0;
@@ -360,7 +369,7 @@ void updateMinMax(float humidity, float temperature, float pressure) {
 }
 
 // -------------------------------------------------------------------
-// Save data point til SPIFFS (ringbuffer i fil)
+// Save data point til SPIFFS
 // -------------------------------------------------------------------
 void saveDataPoint(float humidity, float temperature, float pressure) {
     DataPoint dp;
@@ -369,7 +378,6 @@ void saveDataPoint(float humidity, float temperature, float pressure) {
     dp.pressure    = pressure;
     dp.timestamp   = millis() / 60000UL; // Minutes since boot
     
-    // Count existing data points via filstørrelse
     int count = 0;
     File file = SPIFFS.open(DATA_FILE, "r");
     if (file) {
@@ -377,16 +385,13 @@ void saveDataPoint(float humidity, float temperature, float pressure) {
         file.close();
     }
     
-    // Hvis vi har MAX_DATA_POINTS, implementer ringbuffer ved at fjerne ældste
     if (count >= MAX_DATA_POINTS) {
         File readFile = SPIFFS.open(DATA_FILE, "r");
         File tempFile = SPIFFS.open("/temp.bin", "w");
         
         if (readFile && tempFile) {
-            // Skip første datapunkt
             readFile.seek(sizeof(DataPoint));
             
-            // Kopiér resten
             uint8_t buffer[sizeof(DataPoint)];
             while (readFile.available() >= (int)sizeof(DataPoint)) {
                 readFile.read(buffer, sizeof(DataPoint));
@@ -396,20 +401,16 @@ void saveDataPoint(float humidity, float temperature, float pressure) {
             readFile.close();
             tempFile.close();
             
-            // Erstat original fil
             SPIFFS.remove(DATA_FILE);
             SPIFFS.rename("/temp.bin", DATA_FILE);
         }
     }
     
-    // Append nyt datapunkt
     file = SPIFFS.open(DATA_FILE, "a");
     if (file) {
         file.write((uint8_t*)&dp, sizeof(DataPoint));
         file.close();
         Serial.println("Data point saved: RH=" + String(humidity) + "% T=" + String(temperature) + "°C P=" + String(pressure) + "mbar");
-        
-        // Update min/max values
         updateMinMax(humidity, temperature, pressure);
     } else {
         Serial.println("Failed to save data point");
@@ -422,12 +423,10 @@ void saveDataPoint(float humidity, float temperature, float pressure) {
 void setup() {
     Serial.begin(115200);
     
-    // Initialize display
     display.begin();
     display.setRotation(0);
     display.setBrightness(128);
     
-    // Initialize canvas
     canvas.createSprite(display.width(), display.height());
     canvas.setTextColor(WHITE);
     canvas.setTextSize(2);
@@ -450,7 +449,6 @@ void setup() {
         }
     }
 
-    // Configure WiFi Access Point
     Serial.println("Setting up WiFi Access Point...");
     canvas.fillScreen(BLACK);
     canvas.setTextSize(1);
@@ -465,7 +463,6 @@ void setup() {
     Serial.print("AP IP address: ");
     Serial.println(IP);
     
-    // Display WiFi info on screen
     canvas.fillScreen(BLACK);
     canvas.setTextSize(1);
     canvas.setCursor(5, 5);
@@ -480,7 +477,6 @@ void setup() {
     canvas.println("Connect & browse");
     canvas.pushSprite(0, 0);
     
-    // Setup web server
     server.on("/",       handleRoot);
     server.on("/history",handleHistory);
     server.on("/data",   handleData);
@@ -489,7 +485,6 @@ void setup() {
     server.begin();
     Serial.println("HTTP server started");
     
-    // Initialize SPIFFS
     if (!SPIFFS.begin(true)) {
         Serial.println("SPIFFS Mount Failed");
     } else {
@@ -501,35 +496,31 @@ void setup() {
         Serial.print(SPIFFS.usedBytes());
         Serial.println(" bytes");
         
-        // Load min/max values
         loadMinMax();
     }
     
-    delay(3000); // Show WiFi info for 3 seconds
+    delay(3000);
 }
 
 // -------------------------------------------------------------------
 // loop()
 // -------------------------------------------------------------------
 void loop() {
-    // Handle web server clients
     server.handleClient();
     
     if (sht3x.update()) {
-        // Sensor update OK
+        // OK
     }
 
     if (qmp.update()) {
-        // Sensor update OK
+        // OK
     }
     
-    // Log data every minute
     if (millis() - lastLogTime >= LOG_INTERVAL) {
         lastLogTime = millis();
         saveDataPoint(sht3x.humidity, sht3x.cTemp, qmp.pressure / 100.0);
     }
     
-    // Display (kun RH stort tal)
     canvas.fillScreen(BLACK);
     
     int humidity = (int)sht3x.humidity;
